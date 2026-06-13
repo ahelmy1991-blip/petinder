@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model Pet {
+  id           String   @id @default(cuid())
+  name         String
+  species      String   // dog | cat | rabbit | bird | other
+  breed        String
+  ageMonths    Int
+  gender       String   // male | female
+  size         String   // small | medium | large
+  energyLevel  String   // low | medium | high
+  goodWithKids Boolean  @default(false)
+  goodWithPets Boolean  @default(false)
+  description  String   @db.Text
+  aiBio        String?  @db.Text
+  photoUrl     String
+  shelterName  String
+  shelterEmail String
+  location     String
+  isAvailable  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  swipes       Swipe[]
+
+  @@map("pets")
+}
+
+model Swipe {
+  id        String   @id @default(cuid())
+  sessionId String
+  petId     String
+  direction String   // like | pass
+  pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, petId])
+  @@map("swipes")
+}
