@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: { key: string
     const p = await prisma.serviceProvider.findUnique({ where: { merchantKey: params.key } });
     if (!p) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const { category, title, description, priceEGP, durationMins, atHomeOnly, species, segment } = await req.json();
+    const { category, title, description, priceEGP, durationMins, atHomeOnly, species, segment, availableCount } = await req.json();
     if (!category || !title || !priceEGP) {
       return NextResponse.json({ error: "category, title, priceEGP required" }, { status: 400 });
     }
@@ -34,8 +34,16 @@ export async function POST(req: NextRequest, { params }: { params: { key: string
         species: species || "all",
         segment: segment || "B",
         isAvailable: true,
+        availableCount: availableCount != null ? Number(availableCount) : null,
       },
     });
+
+    // Track catalog update
+    await prisma.serviceProvider.update({
+      where: { id: p.id },
+      data: { catalogUpdatedAt: new Date() },
+    });
+
     return NextResponse.json(svc, { status: 201 });
   } catch (e) {
     console.error(e);

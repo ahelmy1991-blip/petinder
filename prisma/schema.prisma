@@ -9,28 +9,31 @@ datasource db {
 }
 
 model Pet {
-  id           String    @id @default(cuid())
-  name         String
-  species      String
-  breed        String
-  ageMonths    Int
-  gender       String
-  size         String
-  energyLevel  String
-  goodWithKids Boolean   @default(false)
-  goodWithPets Boolean   @default(false)
-  description  String    @db.Text
-  aiBio        String?   @db.Text
-  photoUrl     String
-  shelterName  String
-  shelterEmail String
-  location     String
-  latitude     Float?
-  longitude    Float?
-  isAvailable  Boolean   @default(true)
-  adoptedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  swipes       Swipe[]
+  id            String            @id @default(cuid())
+  name          String
+  species       String
+  breed         String
+  ageMonths     Int
+  gender        String
+  size          String
+  energyLevel   String
+  goodWithKids  Boolean           @default(false)
+  goodWithPets  Boolean           @default(false)
+  description   String            @db.Text
+  aiBio         String?           @db.Text
+  photoUrl      String
+  shelterName   String
+  shelterEmail  String
+  location      String
+  latitude      Float?
+  longitude     Float?
+  isAvailable   Boolean           @default(true)
+  adoptedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  swipes        Swipe[]
+  healthRecords PetHealthRecord[]
+  matchesAsPet1 Match[]           @relation("MatchPet1")
+  matchesAsPet2 Match[]           @relation("MatchPet2")
 
   @@map("pets")
 }
@@ -48,45 +51,49 @@ model Swipe {
 }
 
 model ServiceProvider {
-  id           String    @id @default(cuid())
-  name         String
-  bio          String?   @db.Text
-  avatarEmoji  String    @default("👤")
-  location     String
-  neighborhood String
-  latitude     Float?
-  longitude    Float?
-  rating       Float     @default(5.0)
-  reviewCount  Int       @default(0)
-  isVerified   Boolean   @default(false)
-  isApproved   Boolean   @default(true)
-  suspendedAt  DateTime?
-  whatsapp     String?
-  email        String?
-  merchantKey  String?   @unique
-  schedule     Json?
-  createdAt    DateTime  @default(now())
-  services     Service[]
-  bookings     Booking[]
+  id               String                 @id @default(cuid())
+  name             String
+  bio              String?                @db.Text
+  avatarEmoji      String                 @default("👤")
+  location         String
+  neighborhood     String
+  latitude         Float?
+  longitude        Float?
+  rating           Float                  @default(5.0)
+  reviewCount      Int                    @default(0)
+  isVerified       Boolean                @default(false)
+  isApproved       Boolean                @default(true)
+  suspendedAt      DateTime?
+  whatsapp         String?
+  email            String?
+  passwordHash     String?
+  merchantKey      String?                @unique
+  schedule         Json?
+  catalogUpdatedAt DateTime?
+  createdAt        DateTime               @default(now())
+  services         Service[]
+  bookings         Booking[]
+  notifications    MerchantNotification[]
 
   @@map("service_providers")
 }
 
 model Service {
-  id           String          @id @default(cuid())
-  providerId   String
-  provider     ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  category     String
-  title        String
-  description  String          @db.Text
-  priceEGP     Int
-  durationMins Int?
-  atHomeOnly   Boolean         @default(false)
-  species      String          @default("all")
-  segment      String          @default("B")
-  isAvailable  Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  bookings     Booking[]
+  id             String          @id @default(cuid())
+  providerId     String
+  provider       ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category       String
+  title          String
+  description    String          @db.Text
+  priceEGP       Int
+  durationMins   Int?
+  atHomeOnly     Boolean         @default(false)
+  species        String          @default("all")
+  segment        String          @default("B")
+  isAvailable    Boolean         @default(true)
+  availableCount Int?
+  createdAt      DateTime        @default(now())
+  bookings       Booking[]
 
   @@map("services")
 }
@@ -109,4 +116,56 @@ model Booking {
   createdAt   DateTime        @default(now())
 
   @@map("bookings")
+}
+
+model PetHealthRecord {
+  id           String    @id @default(cuid())
+  petId        String
+  pet          Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+  type         String
+  title        String
+  date         DateTime
+  nextDueDate  DateTime?
+  notes        String?   @db.Text
+  providerName String?
+  createdAt    DateTime  @default(now())
+
+  @@map("pet_health_records")
+}
+
+model Match {
+  id        String    @id @default(cuid())
+  pet1Id    String
+  pet1      Pet       @relation("MatchPet1", fields: [pet1Id], references: [id], onDelete: Cascade)
+  pet2Id    String
+  pet2      Pet       @relation("MatchPet2", fields: [pet2Id], references: [id], onDelete: Cascade)
+  matchedAt DateTime  @default(now())
+  messages  Message[]
+
+  @@unique([pet1Id, pet2Id])
+  @@map("matches")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  matchId     String
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  senderPetId String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  read        Boolean  @default(false)
+
+  @@map("messages")
+}
+
+model MerchantNotification {
+  id         String          @id @default(cuid())
+  providerId String
+  provider   ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  type       String
+  message    String          @db.Text
+  read       Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+
+  @@map("merchant_notifications")
 }

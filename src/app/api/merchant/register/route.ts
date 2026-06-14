@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 
 function genKey(name: string) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6);
@@ -21,18 +22,19 @@ const DEFAULT_SCHEDULE = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, bio, avatarEmoji, location, neighborhood, whatsapp, email } = await req.json();
+    const { name, bio, avatarEmoji, location, neighborhood, whatsapp, email, password } = await req.json();
     if (!name || !email || !neighborhood) {
       return NextResponse.json({ error: "name, email, neighborhood required" }, { status: 400 });
     }
 
-    // If email already registered, return existing key
     const existing = await prisma.serviceProvider.findFirst({ where: { email } });
     if (existing) {
       return NextResponse.json({ merchantKey: existing.merchantKey, existing: true });
     }
 
     const merchantKey = genKey(name);
+    const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+
     const provider = await prisma.serviceProvider.create({
       data: {
         name,
@@ -42,6 +44,7 @@ export async function POST(req: NextRequest) {
         neighborhood,
         whatsapp: whatsapp || "",
         email,
+        passwordHash,
         merchantKey,
         schedule: DEFAULT_SCHEDULE,
         isApproved: true,

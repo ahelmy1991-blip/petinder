@@ -11,6 +11,10 @@ async function getProvider(key: string) {
         take: 50,
         include: { service: { select: { title: true, priceEGP: true } } },
       },
+      notifications: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
       _count: { select: { bookings: true, services: true } },
     },
   });
@@ -19,7 +23,10 @@ async function getProvider(key: string) {
 export async function GET(_req: NextRequest, { params }: { params: { key: string } }) {
   const p = await getProvider(params.key);
   if (!p) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(p);
+  // Never expose passwordHash to client
+  const { passwordHash: _, ...safe } = p as typeof p & { passwordHash?: string };
+  void _;
+  return NextResponse.json(safe);
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { key: string } }) {
@@ -33,7 +40,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { key: strin
     for (const k of allowed) if (k in body) data[k] = body[k];
 
     const updated = await prisma.serviceProvider.update({ where: { id: p.id }, data });
-    return NextResponse.json(updated);
+    const { passwordHash: _ph, ...safe } = updated as typeof updated & { passwordHash?: string };
+    void _ph;
+    return NextResponse.json(safe);
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
