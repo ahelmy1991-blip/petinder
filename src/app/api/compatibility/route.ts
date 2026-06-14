@@ -49,7 +49,6 @@ Score 0-29: significant mismatch`;
     const message = await anthropic.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 150,
-      thinking: { type: "adaptive" },
       messages: [{ role: "user", content: prompt }],
     });
 

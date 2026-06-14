@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLocalSession } from "@/hooks/useLocalSession";
 import type { UserPreferences } from "@/lib/types";
 
-const steps = [
+const quizSteps = [
   {
     id: "species",
     question: "What kind of companion are you looking for?",
@@ -75,45 +75,75 @@ const steps = [
   },
 ];
 
+const TOTAL_STEPS = quizSteps.length + 1; // +1 for location step
+
+type LocationStatus = "idle" | "requesting" | "granted" | "denied" | "skipped";
+
 export default function LandingPage() {
   const router = useRouter();
   const { setPreferences } = useLocalSession();
-  const [step, setStep] = useState(-1);  // -1 = hero screen
+  const [step, setStep] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
 
-  const currentStep = steps[step];
+  // Location step state
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
+  const [radiusMiles, setRadiusMiles] = useState(50);
+  const tempCoords = useRef<{ lat: number; lng: number } | null>(null);
 
-  const handleSelect = (value: string) => {
-    setSelected(value);
+  const isLocationStep = step === quizSteps.length;
+  const currentStep = quizSteps[step];
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus("denied");
+      return;
+    }
+    setLocationStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        tempCoords.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocationStatus("granted");
+      },
+      () => setLocationStatus("denied"),
+      { timeout: 10000 }
+    );
   };
 
   const handleNext = () => {
-    if (!selected) return;
-    const newAnswers = { ...answers, [currentStep.key]: selected };
-    setAnswers(newAnswers);
-    setSelected(null);
+    if (!isLocationStep && !selected) return;
 
-    if (step < steps.length - 1) {
+    if (!isLocationStep) {
+      const newAnswers = { ...answers, [currentStep.key]: selected! };
+      setAnswers(newAnswers);
+      setSelected(null);
       setStep(step + 1);
-    } else {
-      // Build preferences and redirect
-      const household = newAnswers.household || "none";
-      const prefs: UserPreferences = {
-        preferredSpecies: (newAnswers.preferredSpecies as UserPreferences["preferredSpecies"]) || "any",
-        livingSpace: (newAnswers.livingSpace as UserPreferences["livingSpace"]) || "apartment",
-        activityLevel: (newAnswers.activityLevel as UserPreferences["activityLevel"]) || "moderate",
-        hasKids: household === "kids" || household === "both",
-        hasPets: household === "both",
-        preferredSize: (newAnswers.preferredSize as UserPreferences["preferredSize"]) || "any",
-        experience: (newAnswers.experience as UserPreferences["experience"]) || "some-experience",
-      };
-      setPreferences(prefs);
-      router.push("/discover");
+      return;
     }
+
+    // Location step — build final prefs and redirect
+    const household = answers.household || "none";
+    const prefs: UserPreferences = {
+      preferredSpecies: (answers.preferredSpecies as UserPreferences["preferredSpecies"]) || "any",
+      livingSpace: (answers.livingSpace as UserPreferences["livingSpace"]) || "apartment",
+      activityLevel: (answers.activityLevel as UserPreferences["activityLevel"]) || "moderate",
+      hasKids: household === "kids" || household === "both",
+      hasPets: household === "both",
+      preferredSize: (answers.preferredSize as UserPreferences["preferredSize"]) || "any",
+      experience: (answers.experience as UserPreferences["experience"]) || "some-experience",
+      ...(locationStatus === "granted" && tempCoords.current
+        ? {
+            userLatitude: tempCoords.current.lat,
+            userLongitude: tempCoords.current.lng,
+            radiusMiles,
+          }
+        : {}),
+    };
+    setPreferences(prefs);
+    router.push("/discover");
   };
 
-  // Hero screen
+  // ─── Hero screen ────────────────────────────────────────────────────────────
   if (step === -1) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4 text-center">
@@ -132,8 +162,8 @@ export default function LandingPage() {
               <span>AI compatibility scoring</span>
             </div>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <span className="text-2xl">🏠</span>
-              <span>Lifestyle-matched pets</span>
+              <span className="text-2xl">📍</span>
+              <span>Location-based matching</span>
             </div>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <span className="text-2xl">❤️</span>
@@ -152,47 +182,129 @@ export default function LandingPage() {
     );
   }
 
-  // Quiz steps
+  // ─── Location step ───────────────────────────────────────────────────────────
+  const locationBody = (
+    <div className="space-y-4 mb-8">
+      {locationStatus === "idle" && (
+        <button
+          onClick={requestLocation}
+          className="w-full p-5 rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50 text-center hover:border-brand-500 hover:shadow-md transition-all duration-200"
+        >
+          <div className="text-4xl mb-2">📍</div>
+          <div className="font-semibold text-gray-900">Use My Location</div>
+          <div className="text-sm text-gray-500 mt-1">Find rescue pets within your area</div>
+        </button>
+      )}
+
+      {locationStatus === "requesting" && (
+        <div className="text-center py-8">
+          <div className="text-5xl mb-3 animate-pulse">📍</div>
+          <p className="text-gray-600 font-medium">Getting your location...</p>
+        </div>
+      )}
+
+      {locationStatus === "granted" && (
+        <div className="space-y-4">
+          <div className="bg-green-50 rounded-2xl p-4 border border-green-200 flex items-center gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="text-green-800 font-semibold">Location found!</p>
+              <p className="text-green-600 text-sm">We&apos;ll show you pets nearby first.</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border-2 border-gray-100 p-4">
+            <label className="flex justify-between text-sm font-semibold text-gray-700 mb-3">
+              <span>Search radius</span>
+              <span className="text-brand-500 font-bold">{radiusMiles} miles</span>
+            </label>
+            <input
+              type="range"
+              min={10} max={100} step={10}
+              value={radiusMiles}
+              onChange={(e) => setRadiusMiles(Number(e.target.value))}
+              className="w-full accent-red-500"
+            />
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>10 mi</span>
+              <span>25 mi</span>
+              <span>50 mi</span>
+              <span>75 mi</span>
+              <span>100 mi</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {locationStatus === "denied" && (
+        <div className="bg-orange-50 rounded-2xl p-4 border border-orange-200 flex items-center gap-3">
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <p className="text-orange-800 font-semibold">Location unavailable</p>
+            <p className="text-orange-600 text-sm">No worries — you can still browse all pets.</p>
+          </div>
+        </div>
+      )}
+
+      {locationStatus === "idle" && (
+        <p className="text-center text-sm text-gray-400">
+          Location is optional — you can always skip this step.
+        </p>
+      )}
+    </div>
+  );
+
+  // ─── Quiz steps ──────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] px-4">
       <div className="w-full max-w-lg">
         {/* Progress bar */}
         <div className="mb-8">
           <div className="flex justify-between text-sm text-gray-400 mb-2">
-            <span>Step {step + 1} of {steps.length}</span>
-            <span>{Math.round(((step + 1) / steps.length) * 100)}% complete</span>
+            <span>Step {step + 1} of {TOTAL_STEPS}</span>
+            <span>{Math.round(((step + 1) / TOTAL_STEPS) * 100)}% complete</span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-500 rounded-full transition-all duration-500"
-              style={{ width: `${((step + 1) / steps.length) * 100}%` }}
+              style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
             />
           </div>
         </div>
 
         {/* Question */}
         <div className="text-center mb-8">
-          <div className="text-5xl mb-4">{currentStep.emoji}</div>
-          <h2 className="text-2xl font-bold text-gray-900">{currentStep.question}</h2>
+          <div className="text-5xl mb-4">{isLocationStep ? "📍" : currentStep.emoji}</div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isLocationStep ? "Find pets near you?" : currentStep.question}
+          </h2>
+          {isLocationStep && (
+            <p className="text-gray-500 mt-2 text-sm">
+              Allow location access to see rescue pets in your area first.
+            </p>
+          )}
         </div>
 
-        {/* Options */}
-        <div className="space-y-3 mb-8">
-          {currentStep.options.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => handleSelect(opt.value)}
-              className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-200 ${
-                selected === opt.value
-                  ? "border-brand-500 bg-brand-50 shadow-md"
-                  : "border-gray-200 bg-white hover:border-brand-300 hover:shadow-sm"
-              }`}
-            >
-              <div className="font-semibold text-gray-900">{opt.label}</div>
-              <div className="text-sm text-gray-500 mt-0.5">{opt.desc}</div>
-            </button>
-          ))}
-        </div>
+        {/* Options or location UI */}
+        {isLocationStep ? (
+          locationBody
+        ) : (
+          <div className="space-y-3 mb-8">
+            {currentStep.options.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setSelected(opt.value)}
+                className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-200 ${
+                  selected === opt.value
+                    ? "border-brand-500 bg-brand-50 shadow-md"
+                    : "border-gray-200 bg-white hover:border-brand-300 hover:shadow-sm"
+                }`}
+              >
+                <div className="font-semibold text-gray-900">{opt.label}</div>
+                <div className="text-sm text-gray-500 mt-0.5">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex gap-3">
@@ -206,14 +318,20 @@ export default function LandingPage() {
           )}
           <button
             onClick={handleNext}
-            disabled={!selected}
+            disabled={!isLocationStep && !selected}
             className={`flex-1 py-3 rounded-full font-bold text-lg transition-all duration-200 ${
-              selected
+              isLocationStep || selected
                 ? "bg-brand-500 text-white hover:bg-brand-600 shadow-md hover:shadow-lg transform hover:scale-105"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            {step === steps.length - 1 ? "Find My Match! 🐾" : "Next →"}
+            {isLocationStep
+              ? locationStatus === "granted"
+                ? "Find My Match! 🐾"
+                : "Skip & Browse All 🐾"
+              : step === quizSteps.length - 1
+              ? "Next →"
+              : "Next →"}
           </button>
         </div>
       </div>

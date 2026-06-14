@@ -1,0 +1,49 @@
+{
+  "name": "Petinder",
+  "short_name": "Petinder",
+  "description": "Swipe to find your perfect rescue pet. Cairo's AI-powered pet adoption & services platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff7ed",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "categories": ["lifestyle", "social"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Discover Pets",
+      "short_name": "Discover",
+      "url": "/discover",
+      "description": "Browse and swipe rescue pets"
+    },
+    {
+      "name": "Pet Services",
+      "short_name": "Services",
+      "url": "/services",
+      "description": "Find walkers, vets, groomers in Cairo"
+    },
+    {
+      "name": "AI Concierge",
+      "short_name": "Concierge",
+      "url": "/concierge",
+      "description": "Chat with your AI pet assistant"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

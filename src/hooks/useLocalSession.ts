@@ -20,11 +20,7 @@ export function useLocalSession() {
 
     const saved = localStorage.getItem(PREFS_KEY);
     if (saved) {
-      try {
-        setPreferencesState(JSON.parse(saved));
-      } catch {
-        // ignore corrupt storage
-      }
+      try { setPreferencesState(JSON.parse(saved)); } catch {}
     }
   }, []);
 
@@ -33,11 +29,19 @@ export function useLocalSession() {
     setPreferencesState(prefs);
   };
 
+  const updatePreferences = (partial: Partial<UserPreferences>) => {
+    setPreferencesState((prev) => {
+      const updated = { ...(prev ?? {} as UserPreferences), ...partial } as UserPreferences;
+      localStorage.setItem(PREFS_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const clearSession = () => {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(PREFS_KEY);
     window.location.reload();
   };
 
-  return { sessionId, preferences, setPreferences, clearSession };
+  return { sessionId, preferences, setPreferences, updatePreferences, clearSession };
 }

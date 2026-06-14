@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        xs: "380px",
+      },
       colors: {
         brand: {
           50:  "#fff1f1",
@@ -40,11 +43,21 @@ const config: Config = {
           "0%":   { transform: "scale(0.8)", opacity: "0" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "slide-up": {
+          "0%":   { transform: "translateY(20px)", opacity: "0" },
+          "100%": { transform: "translateY(0)",    opacity: "1" },
+        },
+        "score-fill": {
+          "0%":   { width: "0%" },
+          "100%": { width: "var(--score-width)" },
+        },
       },
       animation: {
-        "fly-right": "fly-right 0.35s ease-in forwards",
-        "fly-left":  "fly-left 0.35s ease-in forwards",
-        "pop-in":    "pop-in 0.25s ease-out",
+        "fly-right":  "fly-right 0.35s ease-in forwards",
+        "fly-left":   "fly-left 0.35s ease-in forwards",
+        "pop-in":     "pop-in 0.25s ease-out",
+        "slide-up":   "slide-up 0.3s ease-out",
+        "score-fill": "score-fill 1s ease-out forwards",
       },
     },
   },

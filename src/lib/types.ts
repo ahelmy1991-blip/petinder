@@ -15,8 +15,12 @@ export interface Pet {
   shelterName: string;
   shelterEmail: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   isAvailable: boolean;
+  adoptedAt: string | null;
   createdAt: string;
+  distanceMiles?: number | null;
 }
 
 export interface UserPreferences {
@@ -27,13 +31,16 @@ export interface UserPreferences {
   preferredSize: "small" | "medium" | "large" | "any";
   preferredSpecies: "dog" | "cat" | "any";
   experience: "first-time" | "some-experience" | "experienced";
+  userLatitude?: number;
+  userLongitude?: number;
+  radiusMiles?: number;
 }
 
 export interface CompatibilityResult {
-  score: number;       // 0–100
-  emoji: string;       // visual indicator
-  label: string;       // "Perfect Match" | "Great Match" | etc.
-  reason: string;      // 1-2 sentence explanation
+  score: number;
+  emoji: string;
+  label: string;
+  reason: string;
 }
 
 export interface SwipeAction {

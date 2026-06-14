@@ -5,27 +5,31 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Pet {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
-  species      String   // dog | cat | rabbit | bird | other
+  species      String
   breed        String
   ageMonths    Int
-  gender       String   // male | female
-  size         String   // small | medium | large
-  energyLevel  String   // low | medium | high
-  goodWithKids Boolean  @default(false)
-  goodWithPets Boolean  @default(false)
-  description  String   @db.Text
-  aiBio        String?  @db.Text
+  gender       String
+  size         String
+  energyLevel  String
+  goodWithKids Boolean   @default(false)
+  goodWithPets Boolean   @default(false)
+  description  String    @db.Text
+  aiBio        String?   @db.Text
   photoUrl     String
   shelterName  String
   shelterEmail String
   location     String
-  isAvailable  Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  latitude     Float?
+  longitude    Float?
+  isAvailable  Boolean   @default(true)
+  adoptedAt    DateTime?
+  createdAt    DateTime  @default(now())
   swipes       Swipe[]
 
   @@map("pets")
@@ -35,10 +39,74 @@ model Swipe {
   id        String   @id @default(cuid())
   sessionId String
   petId     String
-  direction String   // like | pass
+  direction String
   pet       Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@unique([sessionId, petId])
   @@map("swipes")
+}
+
+model ServiceProvider {
+  id           String    @id @default(cuid())
+  name         String
+  bio          String?   @db.Text
+  avatarEmoji  String    @default("👤")
+  location     String
+  neighborhood String
+  latitude     Float?
+  longitude    Float?
+  rating       Float     @default(5.0)
+  reviewCount  Int       @default(0)
+  isVerified   Boolean   @default(false)
+  isApproved   Boolean   @default(true)
+  suspendedAt  DateTime?
+  whatsapp     String?
+  email        String?
+  merchantKey  String?   @unique
+  schedule     Json?
+  createdAt    DateTime  @default(now())
+  services     Service[]
+  bookings     Booking[]
+
+  @@map("service_providers")
+}
+
+model Service {
+  id           String          @id @default(cuid())
+  providerId   String
+  provider     ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category     String
+  title        String
+  description  String          @db.Text
+  priceEGP     Int
+  durationMins Int?
+  atHomeOnly   Boolean         @default(false)
+  species      String          @default("all")
+  segment      String          @default("B")
+  isAvailable  Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  bookings     Booking[]
+
+  @@map("services")
+}
+
+model Booking {
+  id          String          @id @default(cuid())
+  serviceId   String
+  service     Service         @relation(fields: [serviceId], references: [id])
+  providerId  String
+  provider    ServiceProvider @relation(fields: [providerId], references: [id])
+  sessionId   String
+  clientName  String
+  clientPhone String
+  clientEmail String?
+  petName     String
+  petSpecies  String
+  notes       String?         @db.Text
+  scheduledAt DateTime
+  status      String          @default("pending")
+  createdAt   DateTime        @default(now())
+
+  @@map("bookings")
 }
